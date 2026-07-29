@@ -60,6 +60,8 @@ HACS normally registers this resource automatically:
 type: custom:ha_energy-flow-card
 default_mode: power
 show_card: true
+tap_action:
+  action: none
 ```
 
 Without a `collection_key`, Energy mode displays today's values. To share the
@@ -77,10 +79,24 @@ collection_key: energy_1
 | `default_mode` | No | `power` | Initial mode: `power` or `energy` |
 | `title` | No | Empty | Optional card title |
 | `show_card` | No | `true` | Whether to render the Home Assistant card background |
+| `tap_action` | No | `none` | Home Assistant tap action, including Browser Mod DOM events |
 
 All options are available in the visual editor. Power mode displays Home
 Assistant's localized **Now** label; Energy mode displays its localized
 **Today** label.
+
+Browser Mod popup example:
+
+```yaml
+type: custom:ha_energy-flow-card
+default_mode: power
+tap_action:
+  action: fire-dom-event
+  browser_mod:
+    service: browser_mod.popup
+    data:
+      popup_card_id: power
+```
 
 ## How values are calculated
 

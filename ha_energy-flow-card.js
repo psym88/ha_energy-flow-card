@@ -1,6 +1,6 @@
 // HA Energy Flow Card
 
-const CARD_VERSION = "1.0.1";
+const CARD_VERSION = "1.0.2";
 const CARD_TAG = "ha_energy-flow-card";
 const SOURCE_COLORS = Object.freeze({
   solar: "var(--energy-solar-color, #ff9800)",
@@ -26,6 +26,12 @@ function assertConfig(config) {
     !["power", "energy"].includes(config.default_mode)
   ) {
     throw new Error('default_mode must be "power" or "energy"');
+  }
+  if (
+    config?.tap_action !== undefined &&
+    (typeof config.tap_action !== "object" || config.tap_action === null)
+  ) {
+    throw new Error("tap_action must be an action configuration");
   }
 }
 
@@ -345,11 +351,20 @@ class HaEnergyFlowCard extends HTMLElement {
         },
         { name: "title", selector: { text: {} } },
         { name: "show_card", selector: { boolean: {} } },
+        {
+          name: "tap_action",
+          selector: {
+            ui_action: {
+              default_action: "none",
+            },
+          },
+        },
       ],
       computeLabel: (schema, localize) => {
         if (schema.name === "collection_key") return "Energy collection key";
         if (schema.name === "default_mode") return "Default view";
         if (schema.name === "show_card") return "Show card background";
+        if (schema.name === "tap_action") return "Tap action";
         if (schema.name === "title") {
           return (
             localize("ui.panel.lovelace.editor.card.generic.title") || "Title"
@@ -370,6 +385,7 @@ class HaEnergyFlowCard extends HTMLElement {
       default_mode: "power",
       title: "",
       show_card: true,
+      tap_action: { action: "none" },
     };
   }
 
@@ -381,6 +397,7 @@ class HaEnergyFlowCard extends HTMLElement {
       default_mode: "power",
       title: "",
       show_card: true,
+      tap_action: { action: "none" },
       ...config,
     };
     if (!this._config.collection_key?.trim()) {
@@ -544,6 +561,33 @@ class HaEnergyFlowCard extends HTMLElement {
     return this._hass?.localize?.(key) || fallback;
   }
 
+  _handleTap() {
+    const tapAction = this._config.tap_action;
+    if (!tapAction || tapAction.action === "none") return;
+
+    if (tapAction.action === "fire-dom-event") {
+      this.dispatchEvent(
+        new CustomEvent("ll-custom", {
+          detail: tapAction,
+          bubbles: true,
+          composed: true,
+        })
+      );
+      return;
+    }
+
+    this.dispatchEvent(
+      new CustomEvent("hass-action", {
+        detail: {
+          config: this._config,
+          action: "tap",
+        },
+        bubbles: true,
+        composed: true,
+      })
+    );
+  }
+
   _renderSegment(type, value, total) {
     const percentage = total > 0 ? (value / total) * 100 : 0;
     const showIcon = percentage >= 12;
@@ -603,6 +647,9 @@ class HaEnergyFlowCard extends HTMLElement {
             "Today"
           );
     const wrapperTag = this._config.show_card === false ? "div" : "ha-card";
+    const actionable =
+      this._config.tap_action?.action &&
+      this._config.tap_action.action !== "none";
     const title = this._config.title
       ? `<div class="title">${escapeHtml(this._config.title)}</div>`
       : "";
@@ -626,6 +673,9 @@ class HaEnergyFlowCard extends HTMLElement {
         .card.frameless {
           padding: 0;
           background: transparent;
+        }
+        .card.actionable {
+          cursor: pointer;
         }
         .title {
           margin-bottom: 8px;
@@ -719,7 +769,9 @@ class HaEnergyFlowCard extends HTMLElement {
       </style>
       <${wrapperTag} class="card ${
         this._config.show_card === false ? "frameless" : ""
-      }">
+      } ${actionable ? "actionable" : ""}" ${
+        actionable ? 'role="button" tabindex="0"' : ""
+      }>
         ${title}
         <div class="header">
           <div class="period-label">${escapeHtml(periodLabel)}</div>
@@ -746,6 +798,15 @@ class HaEnergyFlowCard extends HTMLElement {
         }
       </${wrapperTag}>
     `;
+    const cardElement = this.shadowRoot.querySelector(".card");
+    if (actionable && cardElement) {
+      cardElement.addEventListener("click", () => this._handleTap());
+      cardElement.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        this._handleTap();
+      });
+    }
     if (this._nativeCard) this.shadowRoot.appendChild(this._nativeCard);
   }
 }

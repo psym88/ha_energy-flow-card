@@ -11,6 +11,10 @@ class MockShadowRoot {
   querySelectorAll() {
     return [];
   }
+
+  querySelector() {
+    return null;
+  }
 }
 
 class MockHTMLElement {
@@ -63,17 +67,76 @@ test("registers the repository-aligned card type once", () => {
 test("provides a visual editor schema and stub configuration", () => {
   assert.deepEqual(
     Card.getConfigForm().schema.map((entry) => entry.name),
-    ["collection_key", "default_mode", "title", "show_card"]
+    ["collection_key", "default_mode", "title", "show_card", "tap_action"]
   );
   assert.deepEqual(Card.getStubConfig(), {
     default_mode: "power",
     title: "",
     show_card: true,
+    tap_action: { action: "none" },
   });
   assert.throws(
     () => Card.getConfigForm().assertConfig({ collection_key: "invalid" }),
     /must start with energy_/
   );
+});
+
+test("fires Browser Mod compatible DOM events for tap actions", () => {
+  const card = new Card();
+  const events = [];
+  card.dispatchEvent = (event) => {
+    events.push(event);
+    return true;
+  };
+  card.setConfig({
+    default_mode: "power",
+    tap_action: {
+      action: "fire-dom-event",
+      browser_mod: {
+        service: "browser_mod.popup",
+        data: { popup_card_id: "power" },
+      },
+    },
+  });
+
+  card._handleTap();
+
+  assert.equal(events.length, 1);
+  assert.equal(events[0].type, "ll-custom");
+  assert.equal(events[0].bubbles, true);
+  assert.equal(events[0].composed, true);
+  assert.deepEqual(events[0].detail, {
+    action: "fire-dom-event",
+    browser_mod: {
+      service: "browser_mod.popup",
+      data: { popup_card_id: "power" },
+    },
+  });
+});
+
+test("delegates standard tap actions to Home Assistant", () => {
+  const card = new Card();
+  const events = [];
+  card.dispatchEvent = (event) => {
+    events.push(event);
+    return true;
+  };
+  card.setConfig({
+    tap_action: {
+      action: "navigate",
+      navigation_path: "/energy",
+    },
+  });
+
+  card._handleTap();
+
+  assert.equal(events.length, 1);
+  assert.equal(events[0].type, "hass-action");
+  assert.equal(events[0].detail.action, "tap");
+  assert.deepEqual(events[0].detail.config.tap_action, {
+    action: "navigate",
+    navigation_path: "/energy",
+  });
 });
 
 test("uses today's Energy dashboard data when no collection key is configured", () => {
