@@ -43,8 +43,15 @@ globalThis.window = {
   setTimeout,
   clearTimeout,
 };
+globalThis.document = {
+  createElement(name) {
+    const Constructor = registry.get(name);
+    return Constructor ? new Constructor() : { localName: name };
+  },
+};
 
 const {
+  buildConfigSchema,
   computeConsumption,
   getEnergyComposition,
   getEnergyPeriodLabel,
@@ -144,9 +151,16 @@ test("uses Home Assistant relative period names and exact date fallbacks", () =>
 test("provides a visual editor schema and stub configuration", () => {
   assert.deepEqual(
     Card.getConfigForm().schema.map((entry) => entry.name),
-    ["collection_key", "default_mode", "title", "show_card", "interactions"]
+    ["configuration", "interactions"]
   );
-  const interactions = Card.getConfigForm().schema.at(-1);
+  const configuration = Card.getConfigForm().schema[0];
+  assert.equal(configuration.type, "expandable");
+  assert.equal(configuration.flatten, true);
+  assert.deepEqual(
+    configuration.schema.map((entry) => entry.name),
+    ["title", "default_mode", "show_card"]
+  );
+  const interactions = Card.getConfigForm().schema[1];
   assert.equal(interactions.type, "expandable");
   assert.equal(interactions.flatten, true);
   assert.deepEqual(
@@ -164,6 +178,21 @@ test("provides a visual editor schema and stub configuration", () => {
   assert.throws(
     () => Card.getConfigForm().assertConfig({ collection_key: "invalid" }),
     /must start with energy_/
+  );
+});
+
+test("shows the collection key only for the Energy editor mode", () => {
+  assert.deepEqual(
+    buildConfigSchema("power")[0].schema.map((entry) => entry.name),
+    ["title", "default_mode", "show_card"]
+  );
+  assert.deepEqual(
+    buildConfigSchema("energy")[0].schema.map((entry) => entry.name),
+    ["title", "default_mode", "collection_key", "show_card"]
+  );
+  assert.equal(
+    Card.getConfigElement().constructor,
+    registry.get("ha_energy-flow-card-editor")
   );
 });
 

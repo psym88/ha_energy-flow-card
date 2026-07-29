@@ -1,7 +1,8 @@
 // HA Energy Flow Card
 
-const CARD_VERSION = "1.1.2";
+const CARD_VERSION = "1.2.0";
 const CARD_TAG = "ha_energy-flow-card";
+const EDITOR_TAG = "ha_energy-flow-card-editor";
 const HOLD_DELAY_MS = 500;
 const DOUBLE_TAP_DELAY_MS = 250;
 const POINTER_MOVE_TOLERANCE_PX = 10;
@@ -453,6 +454,157 @@ function getEnergyComposition(data) {
   return total;
 }
 
+function buildConfigSchema(mode = "power") {
+  const configuration = [
+    { name: "title", selector: { text: {} } },
+    {
+      name: "default_mode",
+      selector: {
+        select: {
+          mode: "dropdown",
+          options: [
+            { value: "power", label: "Power" },
+            { value: "energy", label: "Energy" },
+          ],
+        },
+      },
+    },
+  ];
+  if (mode === "energy") {
+    configuration.push({
+      name: "collection_key",
+      selector: { text: {} },
+    });
+  }
+  configuration.push({
+    name: "show_card",
+    selector: { boolean: {} },
+  });
+
+  return [
+    {
+      name: "configuration",
+      type: "expandable",
+      title: "Configuration",
+      flatten: true,
+      schema: configuration,
+    },
+    {
+      name: "interactions",
+      type: "expandable",
+      title: "Interactions",
+      flatten: true,
+      schema: [
+        {
+          name: "tap_action",
+          selector: {
+            ui_action: {
+              default_action: "none",
+            },
+          },
+        },
+        {
+          name: "hold_action",
+          selector: {
+            ui_action: {
+              default_action: "none",
+            },
+          },
+        },
+        {
+          name: "double_tap_action",
+          selector: {
+            ui_action: {
+              default_action: "none",
+            },
+          },
+        },
+      ],
+    },
+  ];
+}
+
+function computeConfigLabel(schema, localize = () => "") {
+  if (schema.name === "collection_key") return "Energy collection key";
+  if (schema.name === "default_mode") return "Default view";
+  if (schema.name === "show_card") return "Show card background";
+  if (schema.name === "tap_action") return "Tap action";
+  if (schema.name === "hold_action") return "Hold action";
+  if (schema.name === "double_tap_action") return "Double-tap action";
+  if (schema.name === "title") {
+    return localize("ui.panel.lovelace.editor.card.generic.title") || "Title";
+  }
+  return undefined;
+}
+
+function computeConfigHelper(schema) {
+  return schema.name === "collection_key"
+    ? "Use the same energy_* key as the related Energy cards."
+    : undefined;
+}
+
+class HaEnergyFlowCardEditor extends HTMLElement {
+  constructor() {
+    super();
+    this.attachShadow({ mode: "open" });
+    this._config = {};
+    this._hass = undefined;
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    const form = this.shadowRoot.querySelector("ha-form");
+    if (form) form.hass = hass;
+  }
+
+  get hass() {
+    return this._hass;
+  }
+
+  setConfig(config) {
+    assertConfig(config);
+    this._config = { ...config };
+    this._render();
+  }
+
+  _render() {
+    this.shadowRoot.innerHTML = `
+      <style>
+        :host {
+          display: block;
+        }
+      </style>
+      <ha-form></ha-form>
+    `;
+    const form = this.shadowRoot.querySelector("ha-form");
+    if (!form) return;
+    form.hass = this._hass;
+    form.data = this._config;
+    form.schema = buildConfigSchema(this._config.default_mode || "power");
+    form.computeLabel = (schema) =>
+      computeConfigLabel(
+        schema,
+        this._hass?.localize?.bind(this._hass) || (() => "")
+      );
+    form.computeHelper = computeConfigHelper;
+    form.addEventListener("value-changed", (event) => {
+      event.stopPropagation();
+      const previousMode = this._config.default_mode || "power";
+      this._config = { ...event.detail.value };
+      this.dispatchEvent(
+        new CustomEvent("config-changed", {
+          detail: { config: this._config },
+          bubbles: true,
+          composed: true,
+        })
+      );
+      if ((this._config.default_mode || "power") !== previousMode) {
+        this._render();
+      }
+    });
+  }
+}
+
 class HaEnergyFlowCard extends HTMLElement {
   constructor() {
     super();
@@ -474,75 +626,15 @@ class HaEnergyFlowCard extends HTMLElement {
 
   static getConfigForm() {
     return {
-      schema: [
-        { name: "collection_key", selector: { text: {} } },
-        {
-          name: "default_mode",
-          selector: {
-            select: {
-              mode: "dropdown",
-              options: [
-                { value: "power", label: "Power" },
-                { value: "energy", label: "Energy" },
-              ],
-            },
-          },
-        },
-        { name: "title", selector: { text: {} } },
-        { name: "show_card", selector: { boolean: {} } },
-        {
-          name: "interactions",
-          type: "expandable",
-          title: "Interactions",
-          flatten: true,
-          schema: [
-            {
-              name: "tap_action",
-              selector: {
-                ui_action: {
-                  default_action: "none",
-                },
-              },
-            },
-            {
-              name: "hold_action",
-              selector: {
-                ui_action: {
-                  default_action: "none",
-                },
-              },
-            },
-            {
-              name: "double_tap_action",
-              selector: {
-                ui_action: {
-                  default_action: "none",
-                },
-              },
-            },
-          ],
-        },
-      ],
-      computeLabel: (schema, localize) => {
-        if (schema.name === "collection_key") return "Energy collection key";
-        if (schema.name === "default_mode") return "Default view";
-        if (schema.name === "show_card") return "Show card background";
-        if (schema.name === "tap_action") return "Tap action";
-        if (schema.name === "hold_action") return "Hold action";
-        if (schema.name === "double_tap_action") return "Double-tap action";
-        if (schema.name === "title") {
-          return (
-            localize("ui.panel.lovelace.editor.card.generic.title") || "Title"
-          );
-        }
-        return undefined;
-      },
-      computeHelper: (schema) =>
-        schema.name === "collection_key"
-          ? "Use the same energy_* key as the related Energy cards."
-          : undefined,
+      schema: buildConfigSchema("power"),
+      computeLabel: computeConfigLabel,
+      computeHelper: computeConfigHelper,
       assertConfig,
     };
+  }
+
+  static getConfigElement() {
+    return document.createElement(EDITOR_TAG);
   }
 
   static getStubConfig() {
@@ -1075,6 +1167,10 @@ class HaEnergyFlowCard extends HTMLElement {
   }
 }
 
+if (!customElements.get(EDITOR_TAG)) {
+  customElements.define(EDITOR_TAG, HaEnergyFlowCardEditor);
+}
+
 if (!customElements.get(CARD_TAG)) {
   customElements.define(CARD_TAG, HaEnergyFlowCard);
 }
@@ -1098,6 +1194,7 @@ console.info(
 );
 
 export {
+  buildConfigSchema,
   computeConsumption,
   getEnergyComposition,
   getEnergyPeriodLabel,

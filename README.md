@@ -29,6 +29,7 @@ No source entity has to be configured in the card.
 - Handles grid export and battery charging before assigning home-consumption
   shares
 - Includes a built-in visual card editor
+- Groups settings into expandable Configuration and Interactions sections
 - Honors the operating system's reduced-motion preference
 
 ## Requirements
@@ -95,6 +96,9 @@ Assistant's localized **Now** label; Energy mode displays its localized
 relative period name, such as **Today**, **Yesterday**, or **Last week**.
 Periods without a Home Assistant name display an exact date or date range.
 Tap, hold, and double-tap actions are grouped in the **Interactions** section.
+Title, default view, Energy collection key, and card background are grouped in
+the **Configuration** section. The Energy collection key is only shown when
+Energy is selected.
 
 Browser Mod popup example:
 
