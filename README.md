@@ -23,6 +23,7 @@ No source entity has to be configured in the card.
 - Uses Home Assistant's Energy dashboard source configuration
 - Uses the active Energy collection period
 - Defaults to today's Energy dashboard statistics without a collection key
+- Shows localized relative period names and falls back to exact dates
 - Uses Home Assistant's language, number format, units, colors, and themes
 - Handles grid export and battery charging before assigning home-consumption
   shares
@@ -90,8 +91,9 @@ collection_key: energy_1
 
 All options are available in the visual editor. Power mode displays Home
 Assistant's localized **Now** label; Energy mode displays its localized
-**Today** label. Tap, hold, and double-tap actions are grouped in the
-**Interactions** section.
+relative period name, such as **Today**, **Yesterday**, or **Last week**.
+Periods without a Home Assistant name display an exact date or date range.
+Tap, hold, and double-tap actions are grouped in the **Interactions** section.
 
 Browser Mod popup example:
 

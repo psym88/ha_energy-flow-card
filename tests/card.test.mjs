@@ -47,6 +47,7 @@ globalThis.window = {
 const {
   computeConsumption,
   getEnergyComposition,
+  getEnergyPeriodLabel,
   getEnergyStatisticIds,
   getPowerComposition,
   getTodayRange,
@@ -61,6 +62,82 @@ test("registers the repository-aligned card type once", () => {
     window.customCards.filter((card) => card.type === "ha_energy-flow-card")
       .length,
     1
+  );
+});
+
+test("uses Home Assistant relative period names and exact date fallbacks", () => {
+  const labels = {
+    today: "Localized today",
+    yesterday: "Localized yesterday",
+    this_week: "Localized this week",
+    last_week: "Localized last week",
+    this_month: "Localized this month",
+    last_month: "Localized last month",
+    this_year: "Localized this year",
+    last_year: "Localized last year",
+  };
+  const hass = {
+    locale: { language: "en" },
+    config: { time_zone: "Europe/Zurich" },
+    localize(key) {
+      return labels[key.split(".").at(-1)] || "";
+    },
+  };
+  const now = new Date("2026-07-29T12:00:00Z");
+
+  assert.equal(
+    getEnergyPeriodLabel(
+      hass,
+      new Date("2026-07-28T22:00:00Z"),
+      new Date("2026-07-29T22:00:00Z"),
+      now
+    ),
+    "Localized today"
+  );
+  assert.equal(
+    getEnergyPeriodLabel(
+      hass,
+      new Date("2026-07-27T22:00:00Z"),
+      new Date("2026-07-28T22:00:00Z"),
+      now
+    ),
+    "Localized yesterday"
+  );
+  assert.equal(
+    getEnergyPeriodLabel(
+      hass,
+      new Date("2026-07-19T22:00:00Z"),
+      new Date("2026-07-26T22:00:00Z"),
+      now
+    ),
+    "Localized last week"
+  );
+  assert.equal(
+    getEnergyPeriodLabel(
+      hass,
+      new Date("2026-06-30T22:00:00Z"),
+      new Date("2026-07-31T22:00:00Z"),
+      now
+    ),
+    "Localized this month"
+  );
+  assert.equal(
+    getEnergyPeriodLabel(
+      hass,
+      new Date("2026-07-04T22:00:00Z"),
+      new Date("2026-07-05T22:00:00Z"),
+      now
+    ),
+    "07/05/2026"
+  );
+  assert.equal(
+    getEnergyPeriodLabel(
+      hass,
+      new Date("2026-07-04T22:00:00Z"),
+      new Date("2026-07-07T22:00:00Z"),
+      now
+    ),
+    "07/05/2026 – 07/07/2026"
   );
 });
 

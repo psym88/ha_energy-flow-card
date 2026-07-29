@@ -1,6 +1,6 @@
 // HA Energy Flow Card
 
-const CARD_VERSION = "1.1.0";
+const CARD_VERSION = "1.1.1";
 const CARD_TAG = "ha_energy-flow-card";
 const HOLD_DELAY_MS = 500;
 const DOUBLE_TAP_DELAY_MS = 250;
@@ -103,6 +103,131 @@ function getTodayRange(hass, now = new Date()) {
       timeZone
     ),
   };
+}
+
+function getCalendarParts(hass, date) {
+  const timeZone =
+    hass?.config?.time_zone ||
+    Intl.DateTimeFormat().resolvedOptions().timeZone ||
+    "UTC";
+  return getTimeZoneParts(date, timeZone);
+}
+
+function getCalendarOrdinal(parts) {
+  return Date.UTC(parts.year, parts.month - 1, parts.day) / 86400000;
+}
+
+function getInclusiveRangeEnd(hass, start, end) {
+  if (!(end instanceof Date) || end <= start) return start;
+  const parts = getCalendarParts(hass, end);
+  return parts.hour === 0 && parts.minute === 0 && parts.second === 0
+    ? new Date(end.getTime() - 1)
+    : end;
+}
+
+function getLocalizedPeriod(hass, key) {
+  return hass?.localize?.(`ui.components.selectors.period.periods.${key}`) || "";
+}
+
+function formatPeriodDate(hass, date) {
+  return new Intl.DateTimeFormat(getLanguage(hass), {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    timeZone: hass?.config?.time_zone,
+  }).format(date);
+}
+
+function getEnergyPeriodLabel(hass, start, end, now = new Date()) {
+  if (!(start instanceof Date) || Number.isNaN(start.getTime())) {
+    return getLocalizedPeriod(hass, "today") || "Today";
+  }
+
+  const inclusiveEnd = getInclusiveRangeEnd(hass, start, end);
+  const startParts = getCalendarParts(hass, start);
+  const endParts = getCalendarParts(hass, inclusiveEnd);
+  const todayParts = getCalendarParts(hass, now);
+  const startOrdinal = getCalendarOrdinal(startParts);
+  const endOrdinal = getCalendarOrdinal(endParts);
+  const todayOrdinal = getCalendarOrdinal(todayParts);
+  const rangeDays = endOrdinal - startOrdinal + 1;
+
+  if (rangeDays === 1) {
+    const dayOffset = startOrdinal - todayOrdinal;
+    const key =
+      dayOffset === 0
+        ? "today"
+        : dayOffset === -1
+          ? "yesterday"
+          : dayOffset === 1
+            ? "tomorrow"
+            : undefined;
+    const localized = key ? getLocalizedPeriod(hass, key) : "";
+    return localized || formatPeriodDate(hass, start);
+  }
+
+  if (rangeDays === 7) {
+    const key =
+      startOrdinal <= todayOrdinal && endOrdinal >= todayOrdinal
+        ? "this_week"
+        : endOrdinal < todayOrdinal && todayOrdinal - endOrdinal <= 7
+          ? "last_week"
+          : startOrdinal > todayOrdinal && startOrdinal - todayOrdinal <= 7
+            ? "next_week"
+            : undefined;
+    const localized = key ? getLocalizedPeriod(hass, key) : "";
+    if (localized) return localized;
+  }
+
+  const nextDay = new Date(
+    Date.UTC(endParts.year, endParts.month - 1, endParts.day + 1)
+  );
+  const fullMonth =
+    startParts.day === 1 &&
+    nextDay.getUTCDate() === 1 &&
+    startParts.year === endParts.year &&
+    startParts.month === endParts.month;
+  if (fullMonth) {
+    const monthOffset =
+      (startParts.year - todayParts.year) * 12 +
+      startParts.month -
+      todayParts.month;
+    const key =
+      monthOffset === 0
+        ? "this_month"
+        : monthOffset === -1
+          ? "last_month"
+          : monthOffset === 1
+            ? "next_month"
+            : undefined;
+    const localized = key ? getLocalizedPeriod(hass, key) : "";
+    if (localized) return localized;
+  }
+
+  const fullYear =
+    startParts.month === 1 &&
+    startParts.day === 1 &&
+    endParts.month === 12 &&
+    endParts.day === 31 &&
+    startParts.year === endParts.year;
+  if (fullYear) {
+    const yearOffset = startParts.year - todayParts.year;
+    const key =
+      yearOffset === 0
+        ? "this_year"
+        : yearOffset === -1
+          ? "last_year"
+          : yearOffset === 1
+            ? "next_year"
+            : undefined;
+    const localized = key ? getLocalizedPeriod(hass, key) : "";
+    return localized || String(startParts.year);
+  }
+
+  return `${formatPeriodDate(hass, start)} – ${formatPeriodDate(
+    hass,
+    inclusiveEnd
+  )}`;
 }
 
 function escapeHtml(value) {
@@ -757,9 +882,10 @@ class HaEnergyFlowCard extends HTMLElement {
             "ui.panel.lovelace.components.energy_period_selector.now",
             "Now"
           )
-        : this._localize(
-            "ui.components.selectors.period.periods.today",
-            "Today"
+        : getEnergyPeriodLabel(
+            this._hass,
+            this._data?.start,
+            this._data?.end
           );
     const wrapperTag = this._config.show_card === false ? "div" : "ha-card";
     const actionable = [
@@ -970,6 +1096,7 @@ console.info(
 export {
   computeConsumption,
   getEnergyComposition,
+  getEnergyPeriodLabel,
   getEnergyStatisticIds,
   getPowerComposition,
   getTodayRange,
