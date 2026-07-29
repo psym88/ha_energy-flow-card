@@ -20,6 +20,7 @@ No source entity has to be configured in the card.
 - Native-style tap, hold, and double-tap interactions
 - Live Power composition with animation
 - Period-based Energy composition without animation
+- Composition bar automatically fills the available card height
 - Uses Home Assistant's Energy dashboard source configuration
 - Uses the active Energy collection period
 - Defaults to today's Energy dashboard statistics without a collection key

@@ -1,6 +1,6 @@
 // HA Energy Flow Card
 
-const CARD_VERSION = "1.1.1";
+const CARD_VERSION = "1.1.2";
 const CARD_TAG = "ha_energy-flow-card";
 const HOLD_DELAY_MS = 500;
 const DOUBLE_TAP_DELAY_MS = 250;
@@ -906,6 +906,8 @@ class HaEnergyFlowCard extends HTMLElement {
         ha-card,
         .card {
           box-sizing: border-box;
+          display: flex;
+          flex-direction: column;
           height: 100%;
           min-height: 86px;
           padding: 12px 10px;
@@ -925,6 +927,7 @@ class HaEnergyFlowCard extends HTMLElement {
           -webkit-tap-highlight-color: transparent;
         }
         .title {
+          flex: none;
           margin-bottom: 8px;
           color: var(--primary-text-color);
           font-size: var(--ha-font-size-l, 16px);
@@ -932,6 +935,7 @@ class HaEnergyFlowCard extends HTMLElement {
         }
         .header {
           display: flex;
+          flex: none;
           align-items: center;
           justify-content: space-between;
           gap: 12px;
@@ -954,10 +958,9 @@ class HaEnergyFlowCard extends HTMLElement {
           position: relative;
           display: flex;
           width: 100%;
-          height: 30px;
-          min-height: 30px;
-          max-height: 30px;
-          flex: none;
+          height: auto;
+          min-height: 22px;
+          flex: 1 1 30px;
           overflow: hidden;
           border-radius: calc(var(--ha-card-border-radius, 12px) - 3px);
           background: var(--secondary-background-color);
@@ -997,6 +1000,7 @@ class HaEnergyFlowCard extends HTMLElement {
         }
         .message {
           display: grid;
+          flex: 1 1 30px;
           min-height: 30px;
           place-items: center;
           color: var(--secondary-text-color);

@@ -438,7 +438,11 @@ test("shows a localized period label and animates only the Power view", () => {
   assert.doesNotMatch(card.shadowRoot.innerHTML, /data-mode=/);
   assert.match(
     card.shadowRoot.innerHTML,
-    /\.bar \{[\s\S]*?height: 30px;[\s\S]*?max-height: 30px;/
+    /ha-card,[\s\S]*?\.card \{[\s\S]*?display: flex;[\s\S]*?flex-direction: column;/
+  );
+  assert.match(
+    card.shadowRoot.innerHTML,
+    /\.bar \{[\s\S]*?height: auto;[\s\S]*?min-height: 22px;[\s\S]*?flex: 1 1 30px;/
   );
 
   card.setConfig({ collection_key: "energy_1", default_mode: "energy" });
