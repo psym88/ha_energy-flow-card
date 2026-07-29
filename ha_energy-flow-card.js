@@ -1,7 +1,10 @@
 // HA Energy Flow Card
 
-const CARD_VERSION = "1.0.2";
+const CARD_VERSION = "1.1.0";
 const CARD_TAG = "ha_energy-flow-card";
+const HOLD_DELAY_MS = 500;
+const DOUBLE_TAP_DELAY_MS = 250;
+const POINTER_MOVE_TOLERANCE_PX = 10;
 const SOURCE_COLORS = Object.freeze({
   solar: "var(--energy-solar-color, #ff9800)",
   battery: "var(--energy-battery-out-color, #4caf50)",
@@ -27,11 +30,18 @@ function assertConfig(config) {
   ) {
     throw new Error('default_mode must be "power" or "energy"');
   }
-  if (
-    config?.tap_action !== undefined &&
-    (typeof config.tap_action !== "object" || config.tap_action === null)
-  ) {
-    throw new Error("tap_action must be an action configuration");
+  for (const actionName of [
+    "tap_action",
+    "hold_action",
+    "double_tap_action",
+  ]) {
+    if (
+      config?.[actionName] !== undefined &&
+      (typeof config[actionName] !== "object" ||
+        config[actionName] === null)
+    ) {
+      throw new Error(`${actionName} must be an action configuration`);
+    }
   }
 }
 
@@ -331,6 +341,10 @@ class HaEnergyFlowCard extends HTMLElement {
     this._nativeCard = undefined;
     this._initializationPromise = undefined;
     this._refreshTimer = undefined;
+    this._holdTimer = undefined;
+    this._tapTimer = undefined;
+    this._pointerStart = undefined;
+    this._holdTriggered = false;
   }
 
   static getConfigForm() {
@@ -352,12 +366,36 @@ class HaEnergyFlowCard extends HTMLElement {
         { name: "title", selector: { text: {} } },
         { name: "show_card", selector: { boolean: {} } },
         {
-          name: "tap_action",
-          selector: {
-            ui_action: {
-              default_action: "none",
+          name: "interactions",
+          type: "expandable",
+          title: "Interactions",
+          flatten: true,
+          schema: [
+            {
+              name: "tap_action",
+              selector: {
+                ui_action: {
+                  default_action: "none",
+                },
+              },
             },
-          },
+            {
+              name: "hold_action",
+              selector: {
+                ui_action: {
+                  default_action: "none",
+                },
+              },
+            },
+            {
+              name: "double_tap_action",
+              selector: {
+                ui_action: {
+                  default_action: "none",
+                },
+              },
+            },
+          ],
         },
       ],
       computeLabel: (schema, localize) => {
@@ -365,6 +403,8 @@ class HaEnergyFlowCard extends HTMLElement {
         if (schema.name === "default_mode") return "Default view";
         if (schema.name === "show_card") return "Show card background";
         if (schema.name === "tap_action") return "Tap action";
+        if (schema.name === "hold_action") return "Hold action";
+        if (schema.name === "double_tap_action") return "Double-tap action";
         if (schema.name === "title") {
           return (
             localize("ui.panel.lovelace.editor.card.generic.title") || "Title"
@@ -386,11 +426,14 @@ class HaEnergyFlowCard extends HTMLElement {
       title: "",
       show_card: true,
       tap_action: { action: "none" },
+      hold_action: { action: "none" },
+      double_tap_action: { action: "none" },
     };
   }
 
   setConfig(config) {
     assertConfig(config);
+    this._clearInteractionTimers();
     const previousKey = this._config.collection_key;
     const configurationChanged = this._configurationInitialized;
     this._config = {
@@ -398,6 +441,8 @@ class HaEnergyFlowCard extends HTMLElement {
       title: "",
       show_card: true,
       tap_action: { action: "none" },
+      hold_action: { action: "none" },
+      double_tap_action: { action: "none" },
       ...config,
     };
     if (!this._config.collection_key?.trim()) {
@@ -448,6 +493,7 @@ class HaEnergyFlowCard extends HTMLElement {
     this._disconnectCollection();
     window.clearTimeout(this._refreshTimer);
     this._refreshTimer = undefined;
+    this._clearInteractionTimers();
   }
 
   getCardSize() {
@@ -561,14 +607,20 @@ class HaEnergyFlowCard extends HTMLElement {
     return this._hass?.localize?.(key) || fallback;
   }
 
-  _handleTap() {
-    const tapAction = this._config.tap_action;
-    if (!tapAction || tapAction.action === "none") return;
+  _hasAction(actionName) {
+    const action = this._config[actionName];
+    return !!action?.action && action.action !== "none";
+  }
 
-    if (tapAction.action === "fire-dom-event") {
+  _performAction(interaction) {
+    const actionName = `${interaction}_action`;
+    const actionConfig = this._config[actionName];
+    if (!this._hasAction(actionName)) return;
+
+    if (actionConfig.action === "fire-dom-event") {
       this.dispatchEvent(
         new CustomEvent("ll-custom", {
-          detail: tapAction,
+          detail: actionConfig,
           bubbles: true,
           composed: true,
         })
@@ -580,12 +632,75 @@ class HaEnergyFlowCard extends HTMLElement {
       new CustomEvent("hass-action", {
         detail: {
           config: this._config,
-          action: "tap",
+          action: interaction,
         },
         bubbles: true,
         composed: true,
       })
     );
+  }
+
+  _handlePointerDown(event) {
+    if (event.button !== undefined && event.button !== 0) return;
+    this._pointerStart = { x: event.clientX, y: event.clientY };
+    this._holdTriggered = false;
+    window.clearTimeout(this._holdTimer);
+    if (this._hasAction("hold_action")) {
+      this._holdTimer = window.setTimeout(() => {
+        this._holdTimer = undefined;
+        this._holdTriggered = true;
+        this._performAction("hold");
+      }, HOLD_DELAY_MS);
+    }
+  }
+
+  _handlePointerMove(event) {
+    if (!this._pointerStart) return;
+    const moved = Math.hypot(
+      event.clientX - this._pointerStart.x,
+      event.clientY - this._pointerStart.y
+    );
+    if (moved > POINTER_MOVE_TOLERANCE_PX) {
+      window.clearTimeout(this._holdTimer);
+      this._holdTimer = undefined;
+      this._pointerStart = undefined;
+    }
+  }
+
+  _handlePointerEnd() {
+    window.clearTimeout(this._holdTimer);
+    this._holdTimer = undefined;
+    this._pointerStart = undefined;
+  }
+
+  _handleClick() {
+    if (this._holdTriggered) {
+      this._holdTriggered = false;
+      return;
+    }
+    if (!this._hasAction("double_tap_action")) {
+      this._performAction("tap");
+      return;
+    }
+    if (this._tapTimer) {
+      window.clearTimeout(this._tapTimer);
+      this._tapTimer = undefined;
+      this._performAction("double_tap");
+      return;
+    }
+    this._tapTimer = window.setTimeout(() => {
+      this._tapTimer = undefined;
+      this._performAction("tap");
+    }, DOUBLE_TAP_DELAY_MS);
+  }
+
+  _clearInteractionTimers() {
+    window.clearTimeout(this._holdTimer);
+    window.clearTimeout(this._tapTimer);
+    this._holdTimer = undefined;
+    this._tapTimer = undefined;
+    this._pointerStart = undefined;
+    this._holdTriggered = false;
   }
 
   _renderSegment(type, value, total) {
@@ -647,9 +762,11 @@ class HaEnergyFlowCard extends HTMLElement {
             "Today"
           );
     const wrapperTag = this._config.show_card === false ? "div" : "ha-card";
-    const actionable =
-      this._config.tap_action?.action &&
-      this._config.tap_action.action !== "none";
+    const actionable = [
+      "tap_action",
+      "hold_action",
+      "double_tap_action",
+    ].some((actionName) => this._hasAction(actionName));
     const title = this._config.title
       ? `<div class="title">${escapeHtml(this._config.title)}</div>`
       : "";
@@ -676,6 +793,10 @@ class HaEnergyFlowCard extends HTMLElement {
         }
         .card.actionable {
           cursor: pointer;
+          touch-action: manipulation;
+          user-select: none;
+          -webkit-user-select: none;
+          -webkit-tap-highlight-color: transparent;
         }
         .title {
           margin-bottom: 8px;
@@ -800,11 +921,24 @@ class HaEnergyFlowCard extends HTMLElement {
     `;
     const cardElement = this.shadowRoot.querySelector(".card");
     if (actionable && cardElement) {
-      cardElement.addEventListener("click", () => this._handleTap());
+      cardElement.addEventListener("pointerdown", (event) =>
+        this._handlePointerDown(event)
+      );
+      cardElement.addEventListener("pointermove", (event) =>
+        this._handlePointerMove(event)
+      );
+      cardElement.addEventListener("pointerup", () => this._handlePointerEnd());
+      cardElement.addEventListener("pointercancel", () =>
+        this._handlePointerEnd()
+      );
+      cardElement.addEventListener("click", () => this._handleClick());
+      cardElement.addEventListener("contextmenu", (event) => {
+        if (this._hasAction("hold_action")) event.preventDefault();
+      });
       cardElement.addEventListener("keydown", (event) => {
         if (event.key !== "Enter" && event.key !== " ") return;
         event.preventDefault();
-        this._handleTap();
+        this._performAction("tap");
       });
     }
     if (this._nativeCard) this.shadowRoot.appendChild(this._nativeCard);

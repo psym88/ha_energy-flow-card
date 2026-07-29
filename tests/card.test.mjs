@@ -67,13 +67,22 @@ test("registers the repository-aligned card type once", () => {
 test("provides a visual editor schema and stub configuration", () => {
   assert.deepEqual(
     Card.getConfigForm().schema.map((entry) => entry.name),
-    ["collection_key", "default_mode", "title", "show_card", "tap_action"]
+    ["collection_key", "default_mode", "title", "show_card", "interactions"]
+  );
+  const interactions = Card.getConfigForm().schema.at(-1);
+  assert.equal(interactions.type, "expandable");
+  assert.equal(interactions.flatten, true);
+  assert.deepEqual(
+    interactions.schema.map((entry) => entry.name),
+    ["tap_action", "hold_action", "double_tap_action"]
   );
   assert.deepEqual(Card.getStubConfig(), {
     default_mode: "power",
     title: "",
     show_card: true,
     tap_action: { action: "none" },
+    hold_action: { action: "none" },
+    double_tap_action: { action: "none" },
   });
   assert.throws(
     () => Card.getConfigForm().assertConfig({ collection_key: "invalid" }),
@@ -99,7 +108,7 @@ test("fires Browser Mod compatible DOM events for tap actions", () => {
     },
   });
 
-  card._handleTap();
+  card._performAction("tap");
 
   assert.equal(events.length, 1);
   assert.equal(events[0].type, "ll-custom");
@@ -128,7 +137,7 @@ test("delegates standard tap actions to Home Assistant", () => {
     },
   });
 
-  card._handleTap();
+  card._performAction("tap");
 
   assert.equal(events.length, 1);
   assert.equal(events[0].type, "hass-action");
@@ -137,6 +146,49 @@ test("delegates standard tap actions to Home Assistant", () => {
     action: "navigate",
     navigation_path: "/energy",
   });
+});
+
+test("dispatches hold and double-tap actions with Home Assistant interaction names", () => {
+  const card = new Card();
+  const events = [];
+  card.dispatchEvent = (event) => {
+    events.push(event);
+    return true;
+  };
+  card.setConfig({
+    hold_action: { action: "navigate", navigation_path: "/hold" },
+    double_tap_action: {
+      action: "navigate",
+      navigation_path: "/double",
+    },
+  });
+
+  card._performAction("hold");
+  card._performAction("double_tap");
+
+  assert.deepEqual(
+    events.map((event) => event.detail.action),
+    ["hold", "double_tap"]
+  );
+});
+
+test("delays taps only when a double-tap action is configured", async () => {
+  const card = new Card();
+  const interactions = [];
+  card._performAction = (interaction) => interactions.push(interaction);
+  card.setConfig({ tap_action: { action: "navigate" } });
+  card._handleClick();
+  assert.deepEqual(interactions, ["tap"]);
+
+  interactions.length = 0;
+  card.setConfig({
+    tap_action: { action: "navigate" },
+    double_tap_action: { action: "navigate" },
+  });
+  card._handleClick();
+  assert.deepEqual(interactions, []);
+  card._handleClick();
+  assert.deepEqual(interactions, ["double_tap"]);
 });
 
 test("uses today's Energy dashboard data when no collection key is configured", () => {

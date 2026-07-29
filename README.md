@@ -17,6 +17,7 @@ No source entity has to be configured in the card.
 ## Features
 
 - Power/Energy mode selection in the visual editor
+- Native-style tap, hold, and double-tap interactions
 - Live Power composition with animation
 - Period-based Energy composition without animation
 - Uses Home Assistant's Energy dashboard source configuration
@@ -62,6 +63,10 @@ default_mode: power
 show_card: true
 tap_action:
   action: none
+hold_action:
+  action: none
+double_tap_action:
+  action: none
 ```
 
 Without a `collection_key`, Energy mode displays today's values. To share the
@@ -80,10 +85,13 @@ collection_key: energy_1
 | `title` | No | Empty | Optional card title |
 | `show_card` | No | `true` | Whether to render the Home Assistant card background |
 | `tap_action` | No | `none` | Home Assistant tap action, including Browser Mod DOM events |
+| `hold_action` | No | `none` | Home Assistant hold action |
+| `double_tap_action` | No | `none` | Home Assistant double-tap action |
 
 All options are available in the visual editor. Power mode displays Home
 Assistant's localized **Now** label; Energy mode displays its localized
-**Today** label.
+**Today** label. Tap, hold, and double-tap actions are grouped in the
+**Interactions** section.
 
 Browser Mod popup example:
 
