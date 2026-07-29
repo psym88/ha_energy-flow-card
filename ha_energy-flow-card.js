@@ -1,6 +1,6 @@
 // HA Energy Flow Card
 
-const CARD_VERSION = "1.2.1";
+const CARD_VERSION = "1.2.2";
 const CARD_TAG = "ha_energy-flow-card";
 const EDITOR_TAG = "ha_energy-flow-card-editor";
 const HOLD_DELAY_MS = 500;
@@ -727,10 +727,8 @@ class HaEnergyFlowCard extends HTMLElement {
 
   getGridOptions() {
     return {
-      columns: 12,
-      min_columns: 4,
-      rows: 2,
-      min_rows: 1,
+      columns: 6,
+      rows: "auto",
     };
   }
 

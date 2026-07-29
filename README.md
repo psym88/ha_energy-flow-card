@@ -21,6 +21,7 @@ No source entity has to be configured in the card.
 - Live Power composition with animation
 - Period-based Energy composition without animation
 - Composition bar automatically fills the available card height
+- Defaults to a 6-column, content-height layout in Sections views
 - Uses Home Assistant's Energy dashboard source configuration
 - Uses the active Energy collection period
 - Defaults to today's Energy dashboard statistics without a collection key

@@ -72,6 +72,14 @@ test("registers the repository-aligned card type once", () => {
   );
 });
 
+test("uses the compact six-column automatic-height grid default", () => {
+  const card = new Card();
+  assert.deepEqual(card.getGridOptions(), {
+    columns: 6,
+    rows: "auto",
+  });
+});
+
 test("uses Home Assistant relative period names and exact date fallbacks", () => {
   const labels = {
     today: "Localized today",
