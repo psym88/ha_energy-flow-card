@@ -212,7 +212,7 @@ test("calculates Energy shares per statistics interval before summing", () => {
   });
 });
 
-test("animates only the Power view", () => {
+test("shows a localized period label and animates only the Power view", () => {
   const card = new Card();
   card._data = {
     prefs: {
@@ -225,6 +225,11 @@ test("animates only the Power view", () => {
   card.setConfig({ collection_key: "energy_1", default_mode: "power" });
   card.hass = {
     locale: { language: "en" },
+    localize(key) {
+      if (key.endsWith("energy_period_selector.now")) return "Localized now";
+      if (key.endsWith("periods.today")) return "Localized today";
+      return "";
+    },
     states: {
       "sensor.solar_power": {
         state: "1000",
@@ -233,7 +238,21 @@ test("animates only the Power view", () => {
     },
   };
   assert.match(card.shadowRoot.innerHTML, /class="bar animated"/);
+  assert.match(
+    card.shadowRoot.innerHTML,
+    /class="period-label">Localized now<\/div>/
+  );
+  assert.doesNotMatch(card.shadowRoot.innerHTML, /class="mode-switch"/);
+  assert.doesNotMatch(card.shadowRoot.innerHTML, /data-mode=/);
+  assert.match(
+    card.shadowRoot.innerHTML,
+    /\.bar \{[\s\S]*?height: 30px;[\s\S]*?max-height: 30px;/
+  );
 
-  card._setMode("energy");
+  card.setConfig({ collection_key: "energy_1", default_mode: "energy" });
   assert.doesNotMatch(card.shadowRoot.innerHTML, /class="bar animated"/);
+  assert.match(
+    card.shadowRoot.innerHTML,
+    /class="period-label">Localized today<\/div>/
+  );
 });

@@ -16,7 +16,7 @@ No source entity has to be configured in the card.
 
 ## Features
 
-- In-card Power/Energy switch
+- Power/Energy mode selection in the visual editor
 - Live Power composition with animation
 - Period-based Energy composition without animation
 - Uses Home Assistant's Energy dashboard source configuration
@@ -78,8 +78,9 @@ collection_key: energy_1
 | `title` | No | Empty | Optional card title |
 | `show_card` | No | `true` | Whether to render the Home Assistant card background |
 
-All options are available in the visual editor. The Power/Energy switch remains
-available directly on the rendered card.
+All options are available in the visual editor. Power mode displays Home
+Assistant's localized **Now** label; Energy mode displays its localized
+**Today** label.
 
 ## How values are calculated
 

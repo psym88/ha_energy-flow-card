@@ -1,6 +1,6 @@
 // HA Energy Flow Card
 
-const CARD_VERSION = "1.0.0";
+const CARD_VERSION = "1.0.1";
 const CARD_TAG = "ha_energy-flow-card";
 const SOURCE_COLORS = Object.freeze({
   solar: "var(--energy-solar-color, #ff9800)",
@@ -387,10 +387,7 @@ class HaEnergyFlowCard extends HTMLElement {
       delete this._config.collection_key;
     }
     this._configurationInitialized = true;
-    if (!this._modeInitialized) {
-      this._mode = this._config.default_mode;
-      this._modeInitialized = true;
-    }
+    this._mode = this._config.default_mode;
     if (configurationChanged && previousKey !== this._config.collection_key) {
       this._disconnectCollection();
       window.clearTimeout(this._refreshTimer);
@@ -547,12 +544,6 @@ class HaEnergyFlowCard extends HTMLElement {
     return this._hass?.localize?.(key) || fallback;
   }
 
-  _setMode(mode) {
-    if (!["power", "energy"].includes(mode) || mode === this._mode) return;
-    this._mode = mode;
-    this._render();
-  }
-
   _renderSegment(type, value, total) {
     const percentage = total > 0 ? (value / total) * 100 : 0;
     const showIcon = percentage >= 12;
@@ -593,14 +584,6 @@ class HaEnergyFlowCard extends HTMLElement {
       this._mode === "power"
         ? formatPower(this._hass, values.total)
         : formatEnergy(this._hass, values.total);
-    const powerLabel = this._localize(
-      "ui.panel.lovelace.cards.energy.power",
-      "Power"
-    );
-    const energyLabel = this._localize(
-      "ui.panel.lovelace.cards.energy.energy",
-      "Energy"
-    );
     const loadingLabel = this._localize(
       "ui.panel.lovelace.cards.energy.loading",
       "Loading energy data"
@@ -609,6 +592,16 @@ class HaEnergyFlowCard extends HTMLElement {
       "ui.panel.lovelace.cards.energy.no_data",
       "No data"
     );
+    const periodLabel =
+      this._mode === "power"
+        ? this._localize(
+            "ui.panel.lovelace.components.energy_period_selector.now",
+            "Now"
+          )
+        : this._localize(
+            "ui.components.selectors.period.periods.today",
+            "Today"
+          );
     const wrapperTag = this._config.show_card === false ? "div" : "ha-card";
     const title = this._config.title
       ? `<div class="title">${escapeHtml(this._config.title)}</div>`
@@ -648,28 +641,10 @@ class HaEnergyFlowCard extends HTMLElement {
           min-width: 0;
           margin-bottom: 8px;
         }
-        .mode-switch {
-          display: inline-grid;
-          grid-template-columns: auto auto;
-          min-width: 0;
-          padding: 2px;
-          border-radius: var(--ha-border-radius-pill, 999px);
-          background: var(--secondary-background-color);
-        }
-        .mode-switch button {
-          min-height: 28px;
-          padding: 0 var(--ha-space-3, 12px);
-          border: 0;
-          border-radius: var(--ha-border-radius-pill, 999px);
-          background: transparent;
-          color: var(--secondary-text-color);
-          font: inherit;
-          cursor: pointer;
-        }
-        .mode-switch button[aria-pressed="true"] {
-          background: var(--card-background-color);
+        .period-label {
           color: var(--primary-text-color);
-          box-shadow: var(--ha-card-box-shadow, 0 1px 2px rgba(0, 0, 0, 0.16));
+          font-size: var(--ha-font-size-m, 14px);
+          font-weight: var(--ha-font-weight-medium, 500);
         }
         .value {
           overflow: hidden;
@@ -682,8 +657,10 @@ class HaEnergyFlowCard extends HTMLElement {
           position: relative;
           display: flex;
           width: 100%;
-          height: 100%;
+          height: 30px;
           min-height: 30px;
+          max-height: 30px;
+          flex: none;
           overflow: hidden;
           border-radius: calc(var(--ha-card-border-radius, 12px) - 3px);
           background: var(--secondary-background-color);
@@ -745,14 +722,7 @@ class HaEnergyFlowCard extends HTMLElement {
       }">
         ${title}
         <div class="header">
-          <div class="mode-switch" role="group" aria-label="Display mode">
-            <button type="button" data-mode="power" aria-pressed="${
-              this._mode === "power"
-            }">${escapeHtml(powerLabel)}</button>
-            <button type="button" data-mode="energy" aria-pressed="${
-              this._mode === "energy"
-            }">${escapeHtml(energyLabel)}</button>
-          </div>
+          <div class="period-label">${escapeHtml(periodLabel)}</div>
           <div class="value">${escapeHtml(valueText)}</div>
         </div>
         ${
@@ -776,11 +746,6 @@ class HaEnergyFlowCard extends HTMLElement {
         }
       </${wrapperTag}>
     `;
-    this.shadowRoot.querySelectorAll("[data-mode]").forEach((button) => {
-      button.addEventListener("click", () => {
-        this._setMode(button.dataset.mode);
-      });
-    });
     if (this._nativeCard) this.shadowRoot.appendChild(this._nativeCard);
   }
 }
