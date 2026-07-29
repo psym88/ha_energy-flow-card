@@ -3,7 +3,7 @@
 A compact Home Assistant card that shows how much of the home's consumption
 comes from solar, battery, and grid sources.
 
-![HA Energy Flow Card preview](images/preview-v1.2.2.png)
+![HA Energy Flow Card preview](images/preview.png)
 
 The card reads both modes directly from the Energy dashboard configuration:
 
