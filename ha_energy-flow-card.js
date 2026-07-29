@@ -1,6 +1,6 @@
 // HA Energy Flow Card
 
-const CARD_VERSION = "1.2.0";
+const CARD_VERSION = "1.2.1";
 const CARD_TAG = "ha_energy-flow-card";
 const EDITOR_TAG = "ha_energy-flow-card-editor";
 const HOLD_DELAY_MS = 500;
@@ -539,7 +539,7 @@ function computeConfigLabel(schema, localize = () => "") {
 
 function computeConfigHelper(schema) {
   return schema.name === "collection_key"
-    ? "Use the same energy_* key as the related Energy cards."
+    ? "Optional. Without a collection key, Energy mode displays today's values. Use the same energy_* key to share a period with related Energy cards."
     : undefined;
 }
 
@@ -549,12 +549,12 @@ class HaEnergyFlowCardEditor extends HTMLElement {
     this.attachShadow({ mode: "open" });
     this._config = {};
     this._hass = undefined;
+    this._form = undefined;
   }
 
   set hass(hass) {
     this._hass = hass;
-    const form = this.shadowRoot.querySelector("ha-form");
-    if (form) form.hass = hass;
+    if (this._form) this._form.hass = hass;
   }
 
   get hass() {
@@ -564,7 +564,20 @@ class HaEnergyFlowCardEditor extends HTMLElement {
   setConfig(config) {
     assertConfig(config);
     this._config = { ...config };
-    this._render();
+    if (this._form) {
+      this._updateForm();
+    } else {
+      this._render();
+    }
+  }
+
+  _updateForm() {
+    if (!this._form) return;
+    this._form.hass = this._hass;
+    this._form.data = this._config;
+    this._form.schema = buildConfigSchema(
+      this._config.default_mode || "power"
+    );
   }
 
   _render() {
@@ -576,20 +589,17 @@ class HaEnergyFlowCardEditor extends HTMLElement {
       </style>
       <ha-form></ha-form>
     `;
-    const form = this.shadowRoot.querySelector("ha-form");
-    if (!form) return;
-    form.hass = this._hass;
-    form.data = this._config;
-    form.schema = buildConfigSchema(this._config.default_mode || "power");
-    form.computeLabel = (schema) =>
+    this._form = this.shadowRoot.querySelector("ha-form");
+    if (!this._form) return;
+    this._updateForm();
+    this._form.computeLabel = (schema) =>
       computeConfigLabel(
         schema,
         this._hass?.localize?.bind(this._hass) || (() => "")
       );
-    form.computeHelper = computeConfigHelper;
-    form.addEventListener("value-changed", (event) => {
+    this._form.computeHelper = computeConfigHelper;
+    this._form.addEventListener("value-changed", (event) => {
       event.stopPropagation();
-      const previousMode = this._config.default_mode || "power";
       this._config = { ...event.detail.value };
       this.dispatchEvent(
         new CustomEvent("config-changed", {
@@ -598,9 +608,7 @@ class HaEnergyFlowCardEditor extends HTMLElement {
           composed: true,
         })
       );
-      if ((this._config.default_mode || "power") !== previousMode) {
-        this._render();
-      }
+      this._updateForm();
     });
   }
 }

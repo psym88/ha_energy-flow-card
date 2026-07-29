@@ -194,6 +194,36 @@ test("shows the collection key only for the Energy editor mode", () => {
     Card.getConfigElement().constructor,
     registry.get("ha_energy-flow-card-editor")
   );
+  assert.match(
+    Card.getConfigForm().computeHelper({ name: "collection_key" }),
+    /Optional.*today's values/
+  );
+});
+
+test("updates the existing editor form without closing expandable sections", () => {
+  const Editor = registry.get("ha_energy-flow-card-editor");
+  const editor = new Editor();
+  const form = {};
+  let renderCount = 0;
+  editor._form = form;
+  editor._render = () => {
+    renderCount += 1;
+  };
+
+  editor.setConfig({ default_mode: "power" });
+  assert.equal(renderCount, 0);
+  assert.equal(form.schema[0].title, "Configuration");
+  assert.deepEqual(
+    form.schema[0].schema.map((entry) => entry.name),
+    ["title", "default_mode", "show_card"]
+  );
+
+  editor.setConfig({ default_mode: "energy" });
+  assert.equal(renderCount, 0);
+  assert.deepEqual(
+    form.schema[0].schema.map((entry) => entry.name),
+    ["title", "default_mode", "collection_key", "show_card"]
+  );
 });
 
 test("fires Browser Mod compatible DOM events for tap actions", () => {
