@@ -3,6 +3,8 @@
 A compact Home Assistant card that shows how much of the home's consumption
 comes from solar, battery, and grid sources.
 
+![HA Energy Flow Card preview](images/preview.png)
+
 The card reads both modes directly from the Energy dashboard configuration:
 
 - **Power** uses the current `stat_rate` entities configured for solar, grid,
@@ -19,6 +21,7 @@ No source entity has to be configured in the card.
 - Period-based Energy composition without animation
 - Uses Home Assistant's Energy dashboard source configuration
 - Uses the active Energy collection period
+- Defaults to today's Energy dashboard statistics without a collection key
 - Uses Home Assistant's language, number format, units, colors, and themes
 - Handles grid export and battery charging before assigning home-consumption
   shares
@@ -55,17 +58,22 @@ HACS normally registers this resource automatically:
 
 ```yaml
 type: custom:ha_energy-flow-card
-collection_key: energy_1
 default_mode: power
 show_card: true
 ```
 
-Use the same `collection_key` for this card, the Energy period selector, and
-other Energy cards that should share a period.
+Without a `collection_key`, Energy mode displays today's values. To share the
+active period with the Energy period selector or other Energy cards, configure
+the same key on every related card:
+
+```yaml
+type: custom:ha_energy-flow-card
+collection_key: energy_1
+```
 
 | Option | Required | Default | Description |
 | --- | --- | --- | --- |
-| `collection_key` | No | `energy_1` | Shared Energy collection key; it must start with `energy_` |
+| `collection_key` | No | Today | Optional shared Energy collection key; it must start with `energy_` |
 | `default_mode` | No | `power` | Initial mode: `power` or `energy` |
 | `title` | No | Empty | Optional card title |
 | `show_card` | No | `true` | Whether to render the Home Assistant card background |

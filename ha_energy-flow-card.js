@@ -1,6 +1,6 @@
 // HA Energy Flow Card
 
-const CARD_VERSION = "0.1.0";
+const CARD_VERSION = "1.0.0";
 const CARD_TAG = "ha_energy-flow-card";
 const SOURCE_COLORS = Object.freeze({
   solar: "var(--energy-solar-color, #ff9800)",
@@ -27,6 +27,66 @@ function assertConfig(config) {
   ) {
     throw new Error('default_mode must be "power" or "energy"');
   }
+}
+
+function getEnergyStatisticIds(preferences) {
+  const ids = new Set();
+  for (const source of preferences?.energy_sources || []) {
+    if (!["solar", "grid", "battery"].includes(source.type)) continue;
+    if (source.stat_energy_from) ids.add(source.stat_energy_from);
+    if (source.stat_energy_to) ids.add(source.stat_energy_to);
+  }
+  return [...ids];
+}
+
+function getTimeZoneParts(date, timeZone) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  return Object.fromEntries(
+    parts
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, Number(part.value)])
+  );
+}
+
+function getZonedDate(year, month, day, timeZone) {
+  const utcGuess = Date.UTC(year, month - 1, day);
+  const parts = getTimeZoneParts(new Date(utcGuess), timeZone);
+  const representedAsUtc = Date.UTC(
+    parts.year,
+    parts.month - 1,
+    parts.day,
+    parts.hour,
+    parts.minute,
+    parts.second
+  );
+  return new Date(utcGuess - (representedAsUtc - utcGuess));
+}
+
+function getTodayRange(hass, now = new Date()) {
+  const timeZone =
+    hass?.config?.time_zone ||
+    Intl.DateTimeFormat().resolvedOptions().timeZone ||
+    "UTC";
+  const today = getTimeZoneParts(now, timeZone);
+  const nextDay = new Date(Date.UTC(today.year, today.month - 1, today.day + 1));
+  return {
+    start: getZonedDate(today.year, today.month, today.day, timeZone),
+    end: getZonedDate(
+      nextDay.getUTCFullYear(),
+      nextDay.getUTCMonth() + 1,
+      nextDay.getUTCDate(),
+      timeZone
+    ),
+  };
 }
 
 function escapeHtml(value) {
@@ -264,6 +324,7 @@ class HaEnergyFlowCard extends HTMLElement {
     this._unsubscribe = undefined;
     this._nativeCard = undefined;
     this._initializationPromise = undefined;
+    this._refreshTimer = undefined;
   }
 
   static getConfigForm() {
@@ -306,7 +367,6 @@ class HaEnergyFlowCard extends HTMLElement {
 
   static getStubConfig() {
     return {
-      collection_key: "energy_1",
       default_mode: "power",
       title: "",
       show_card: true,
@@ -316,19 +376,25 @@ class HaEnergyFlowCard extends HTMLElement {
   setConfig(config) {
     assertConfig(config);
     const previousKey = this._config.collection_key;
+    const configurationChanged = this._configurationInitialized;
     this._config = {
-      collection_key: "energy_1",
       default_mode: "power",
       title: "",
       show_card: true,
       ...config,
     };
+    if (!this._config.collection_key?.trim()) {
+      delete this._config.collection_key;
+    }
+    this._configurationInitialized = true;
     if (!this._modeInitialized) {
       this._mode = this._config.default_mode;
       this._modeInitialized = true;
     }
-    if (previousKey && previousKey !== this._config.collection_key) {
+    if (configurationChanged && previousKey !== this._config.collection_key) {
       this._disconnectCollection();
+      window.clearTimeout(this._refreshTimer);
+      this._refreshTimer = undefined;
       this._nativeCard?.remove();
       this._nativeCard = undefined;
       this._initializationPromise = undefined;
@@ -366,6 +432,8 @@ class HaEnergyFlowCard extends HTMLElement {
 
   disconnectedCallback() {
     this._disconnectCollection();
+    window.clearTimeout(this._refreshTimer);
+    this._refreshTimer = undefined;
   }
 
   getCardSize() {
@@ -385,17 +453,54 @@ class HaEnergyFlowCard extends HTMLElement {
     if (
       !this.isConnected ||
       !this._hass ||
-      !this._config.collection_key ||
       this._initializationPromise
     ) {
       return this._initializationPromise;
     }
-    this._initializationPromise = this._connectCollection().catch((error) => {
-      this._initializationPromise = undefined;
-      this._error = error;
-      this._render();
-    });
+    this._initializationPromise = (
+      this._config.collection_key
+        ? this._connectCollection()
+        : this._loadToday()
+    ).catch((error) => {
+        this._initializationPromise = undefined;
+        this._error = error;
+        this._render();
+      });
     return this._initializationPromise;
+  }
+
+  async _loadToday() {
+    const prefs = await this._hass.callWS({ type: "energy/get_prefs" });
+    const statisticIds = getEnergyStatisticIds(prefs);
+    const { start, end } = getTodayRange(this._hass);
+    const stats = statisticIds.length
+      ? await this._hass.callWS({
+          type: "recorder/statistics_during_period",
+          start_time: start.toISOString(),
+          end_time: end.toISOString(),
+          statistic_ids: statisticIds,
+          period: "hour",
+          units: { energy: "kWh" },
+          types: ["change"],
+        })
+      : {};
+    this._data = { prefs, stats, start, end };
+    this._error = undefined;
+    this._render();
+    this._scheduleTodayRefresh();
+  }
+
+  _scheduleTodayRefresh() {
+    window.clearTimeout(this._refreshTimer);
+    const nextRefresh = new Date();
+    nextRefresh.setMinutes(20, 0, 0);
+    if (nextRefresh <= new Date()) {
+      nextRefresh.setHours(nextRefresh.getHours() + 1);
+    }
+    this._refreshTimer = window.setTimeout(() => {
+      this._initializationPromise = undefined;
+      this._initialize();
+    }, nextRefresh.getTime() - Date.now());
   }
 
   async _connectCollection() {
@@ -705,6 +810,8 @@ console.info(
 export {
   computeConsumption,
   getEnergyComposition,
+  getEnergyStatisticIds,
   getPowerComposition,
+  getTodayRange,
   normalizePower,
 };

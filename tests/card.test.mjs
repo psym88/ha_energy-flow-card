@@ -43,7 +43,9 @@ globalThis.window = {
 const {
   computeConsumption,
   getEnergyComposition,
+  getEnergyStatisticIds,
   getPowerComposition,
+  getTodayRange,
   normalizePower,
 } = await import("../ha_energy-flow-card.js");
 
@@ -64,7 +66,6 @@ test("provides a visual editor schema and stub configuration", () => {
     ["collection_key", "default_mode", "title", "show_card"]
   );
   assert.deepEqual(Card.getStubConfig(), {
-    collection_key: "energy_1",
     default_mode: "power",
     title: "",
     show_card: true,
@@ -73,6 +74,39 @@ test("provides a visual editor schema and stub configuration", () => {
     () => Card.getConfigForm().assertConfig({ collection_key: "invalid" }),
     /must start with energy_/
   );
+});
+
+test("uses today's Energy dashboard data when no collection key is configured", () => {
+  const prefs = {
+    energy_sources: [
+      { type: "solar", stat_energy_from: "solar" },
+      {
+        type: "grid",
+        stat_energy_from: "grid_in",
+        stat_energy_to: "grid_out",
+      },
+      {
+        type: "battery",
+        stat_energy_from: "battery_out",
+        stat_energy_to: "battery_in",
+      },
+      { type: "gas", stat_energy_from: "gas" },
+    ],
+  };
+  assert.deepEqual(getEnergyStatisticIds(prefs).sort(), [
+    "battery_in",
+    "battery_out",
+    "grid_in",
+    "grid_out",
+    "solar",
+  ]);
+
+  const range = getTodayRange(
+    { config: { time_zone: "Europe/Zurich" } },
+    new Date("2026-07-29T12:00:00Z")
+  );
+  assert.equal(range.start.toISOString(), "2026-07-28T22:00:00.000Z");
+  assert.equal(range.end.toISOString(), "2026-07-29T22:00:00.000Z");
 });
 
 test("normalizes supported power units to watts", () => {
