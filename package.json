@@ -1,6 +1,6 @@
 {
   "name": "ha_energy-flow-card",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "type": "module",
   "private": true,
   "description": "Energy source composition card for Home Assistant",
