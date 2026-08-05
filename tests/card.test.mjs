@@ -519,3 +519,58 @@ test("shows a localized period label and animates only the Power view", () => {
     /class="period-label">Localized today<\/div>/
   );
 });
+
+test("shows an empty, static bar when Power consumption is zero", () => {
+  const card = new Card();
+  card._data = {
+    prefs: {
+      energy_sources: [
+        { type: "solar", stat_rate: "sensor.solar_power" },
+        { type: "grid", stat_rate: "sensor.grid_power" },
+      ],
+    },
+    stats: {},
+  };
+  card.setConfig({ default_mode: "power" });
+  card.hass = {
+    states: {
+      "sensor.solar_power": {
+        state: "700",
+        attributes: { unit_of_measurement: "W" },
+      },
+      "sensor.grid_power": {
+        state: "-700",
+        attributes: { unit_of_measurement: "W" },
+      },
+    },
+  };
+
+  assert.match(card.shadowRoot.innerHTML, /class="value">0 W<\/div>/);
+  assert.match(card.shadowRoot.innerHTML, /class="bar ">/);
+  assert.doesNotMatch(card.shadowRoot.innerHTML, /class="bar animated"/);
+  assert.doesNotMatch(card.shadowRoot.innerHTML, /class="message">No data/);
+});
+
+test("keeps the no-data message when Power sensors are unavailable", () => {
+  const card = new Card();
+  card._data = {
+    prefs: {
+      energy_sources: [
+        { type: "solar", stat_rate: "sensor.solar_power" },
+      ],
+    },
+    stats: {},
+  };
+  card.setConfig({ default_mode: "power" });
+  card.hass = {
+    states: {
+      "sensor.solar_power": {
+        state: "unavailable",
+        attributes: { unit_of_measurement: "W" },
+      },
+    },
+  };
+
+  assert.match(card.shadowRoot.innerHTML, /class="message">No data<\/div>/);
+  assert.doesNotMatch(card.shadowRoot.innerHTML, /class="bar /);
+});

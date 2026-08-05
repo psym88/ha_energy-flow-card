@@ -962,6 +962,11 @@ class HaEnergyFlowCard extends HTMLElement {
             this._trackedEntities
           )
         : getEnergyComposition(this._data);
+    const hasPowerData = [...this._trackedEntities].some((entityId) =>
+      Number.isFinite(
+        Number.parseFloat(this._hass?.states?.[entityId]?.state)
+      )
+    );
     const valueText =
       this._mode === "power"
         ? formatPower(this._hass, values.total)
@@ -1131,10 +1136,13 @@ class HaEnergyFlowCard extends HTMLElement {
             ? `<div class="message">${escapeHtml(this._error.message)}</div>`
             : !this._data
               ? `<div class="message">${escapeHtml(loadingLabel)}</div>`
-              : values.total <= 0
+              : (this._mode === "power" && !hasPowerData) ||
+                  (this._mode === "energy" && values.total <= 0)
                 ? `<div class="message">${escapeHtml(noDataLabel)}</div>`
                 : `<div class="bar ${
-                    this._mode === "power" ? "animated" : ""
+                    this._mode === "power" && values.total > 0
+                      ? "animated"
+                      : ""
                   }">
                     ${this._renderSegment("solar", values.solar, values.total)}
                     ${this._renderSegment(
