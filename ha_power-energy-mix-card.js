@@ -1,8 +1,8 @@
 // HA Power & Energy Mix Card
 
-const CARD_VERSION = "2.0.0";
-const CARD_TAG = "ha-power-energy-mix-card";
-const EDITOR_TAG = "ha-power-energy-mix-card-editor";
+const CARD_VERSION = "2.0.1";
+const CARD_TAG = "ha_power-energy-mix-card";
+const EDITOR_TAG = "ha_power-energy-mix-card-editor";
 const HOLD_DELAY_MS = 500;
 const DOUBLE_TAP_DELAY_MS = 250;
 const POINTER_MOVE_TOLERANCE_PX = 10;
@@ -1198,7 +1198,7 @@ if (!window.customCards.some((card) => card.type === CARD_TAG)) {
     description:
       "Shows the Energy dashboard home-consumption share by solar, battery, and grid.",
     preview: true,
-    documentationURL: "https://github.com/psym88/ha-power-energy-mix-card",
+    documentationURL: "https://github.com/psym88/ha_power-energy-mix-card",
   });
 }
 
