@@ -1,6 +1,6 @@
 // HA Energy Flow Card
 
-const CARD_VERSION = "1.2.3";
+const CARD_VERSION = "1.2.4-beta.1";
 const CARD_TAG = "ha_energy-flow-card";
 const EDITOR_TAG = "ha_energy-flow-card-editor";
 const HOLD_DELAY_MS = 500;
@@ -967,6 +967,7 @@ class HaEnergyFlowCard extends HTMLElement {
         Number.parseFloat(this._hass?.states?.[entityId]?.state)
       )
     );
+    const hasEnergyDataSources = getEnergyStatisticIds(preferences).length > 0;
     const valueText =
       this._mode === "power"
         ? formatPower(this._hass, values.total)
@@ -1137,7 +1138,7 @@ class HaEnergyFlowCard extends HTMLElement {
             : !this._data
               ? `<div class="message">${escapeHtml(loadingLabel)}</div>`
               : (this._mode === "power" && !hasPowerData) ||
-                  (this._mode === "energy" && values.total <= 0)
+                  (this._mode === "energy" && !hasEnergyDataSources)
                 ? `<div class="message">${escapeHtml(noDataLabel)}</div>`
                 : `<div class="bar ${
                     this._mode === "power" && values.total > 0

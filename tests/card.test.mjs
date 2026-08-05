@@ -551,6 +551,39 @@ test("shows an empty, static bar when Power consumption is zero", () => {
   assert.doesNotMatch(card.shadowRoot.innerHTML, /class="message">No data/);
 });
 
+test("shows an empty, static bar when Energy statistics are not available yet", () => {
+  const card = new Card();
+  card._data = {
+    prefs: {
+      energy_sources: [
+        { type: "solar", stat_energy_from: "solar_energy" },
+        { type: "grid", stat_energy_from: "grid_energy" },
+      ],
+    },
+    stats: {},
+  };
+  card.setConfig({ default_mode: "energy" });
+  card.hass = { states: {} };
+
+  assert.match(card.shadowRoot.innerHTML, /class="value">0 kWh<\/div>/);
+  assert.match(card.shadowRoot.innerHTML, /class="bar ">/);
+  assert.doesNotMatch(card.shadowRoot.innerHTML, /class="bar animated"/);
+  assert.doesNotMatch(card.shadowRoot.innerHTML, /class="message">No data/);
+});
+
+test("keeps the no-data message when no Energy sources are configured", () => {
+  const card = new Card();
+  card._data = {
+    prefs: { energy_sources: [] },
+    stats: {},
+  };
+  card.setConfig({ default_mode: "energy" });
+  card.hass = { states: {} };
+
+  assert.match(card.shadowRoot.innerHTML, /class="message">No data<\/div>/);
+  assert.doesNotMatch(card.shadowRoot.innerHTML, /class="bar ">/);
+});
+
 test("keeps the no-data message when Power sensors are unavailable", () => {
   const card = new Card();
   card._data = {
