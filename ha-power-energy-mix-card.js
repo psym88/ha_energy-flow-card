@@ -1,8 +1,8 @@
-// HA Energy Flow Card
+// HA Power & Energy Mix Card
 
-const CARD_VERSION = "1.2.4";
-const CARD_TAG = "ha_energy-flow-card";
-const EDITOR_TAG = "ha_energy-flow-card-editor";
+const CARD_VERSION = "2.0.0";
+const CARD_TAG = "ha-power-energy-mix-card";
+const EDITOR_TAG = "ha-power-energy-mix-card-editor";
 const HOLD_DELAY_MS = 500;
 const DOUBLE_TAP_DELAY_MS = 250;
 const POINTER_MOVE_TOLERANCE_PX = 10;
@@ -543,7 +543,7 @@ function computeConfigHelper(schema) {
     : undefined;
 }
 
-class HaEnergyFlowCardEditor extends HTMLElement {
+class HaPowerEnergyMixCardEditor extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
@@ -613,7 +613,7 @@ class HaEnergyFlowCardEditor extends HTMLElement {
   }
 }
 
-class HaEnergyFlowCard extends HTMLElement {
+class HaPowerEnergyMixCard extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
@@ -1183,27 +1183,27 @@ class HaEnergyFlowCard extends HTMLElement {
 }
 
 if (!customElements.get(EDITOR_TAG)) {
-  customElements.define(EDITOR_TAG, HaEnergyFlowCardEditor);
+  customElements.define(EDITOR_TAG, HaPowerEnergyMixCardEditor);
 }
 
 if (!customElements.get(CARD_TAG)) {
-  customElements.define(CARD_TAG, HaEnergyFlowCard);
+  customElements.define(CARD_TAG, HaPowerEnergyMixCard);
 }
 
 window.customCards = window.customCards || [];
 if (!window.customCards.some((card) => card.type === CARD_TAG)) {
   window.customCards.push({
     type: CARD_TAG,
-    name: "HA Energy Flow Card",
+    name: "HA Power & Energy Mix Card",
     description:
       "Shows the Energy dashboard home-consumption share by solar, battery, and grid.",
     preview: true,
-    documentationURL: "https://github.com/psym88/ha_energy-flow-card",
+    documentationURL: "https://github.com/psym88/ha-power-energy-mix-card",
   });
 }
 
 console.info(
-  `%c HA ENERGY FLOW CARD %c v${CARD_VERSION} `,
+  `%c HA POWER & ENERGY MIX CARD %c v${CARD_VERSION} `,
   "color: white; background: #03a9f4; font-weight: 700;",
   "color: #03a9f4; background: white; font-weight: 700;"
 );

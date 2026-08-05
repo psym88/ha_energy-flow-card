@@ -1,11 +1,11 @@
 {
-  "name": "ha_energy-flow-card",
-  "version": "1.2.4",
+  "name": "ha-power-energy-mix-card",
+  "version": "2.0.0",
   "type": "module",
   "private": true,
   "description": "Energy source composition card for Home Assistant",
   "scripts": {
     "test": "node tests/card.test.mjs",
-    "check": "node --check ha_energy-flow-card.js && npm test"
+    "check": "node --check ha-power-energy-mix-card.js && npm test"
   }
 }

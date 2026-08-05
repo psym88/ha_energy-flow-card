@@ -1,9 +1,9 @@
-# HA Energy Flow Card
+# HA Power & Energy Mix Card
 
 A compact Home Assistant card that shows how much of the home's consumption
 comes from solar, battery, and grid sources.
 
-![HA Energy Flow Card preview](images/preview.png)
+![HA Power & Energy Mix Card preview](images/preview.png)
 
 The card reads both modes directly from the Energy dashboard configuration:
 
@@ -45,24 +45,24 @@ that Energy source. Missing Power sources are treated as zero.
 
 ## HACS installation
 
-[![Open your Home Assistant instance and open this repository in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=psym88&repository=ha_energy-flow-card&category=plugin)
+[![Open your Home Assistant instance and open this repository in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=psym88&repository=ha-power-energy-mix-card&category=plugin)
 
 1. Open HACS and select **Custom repositories** from the three-dot menu.
-2. Add `https://github.com/psym88/ha_energy-flow-card` with the **Dashboard**
+2. Add `https://github.com/psym88/ha-power-energy-mix-card` with the **Dashboard**
    category.
-3. Install **HA Energy Flow Card**.
+3. Install **HA Power & Energy Mix Card**.
 4. Reload Home Assistant and clear the browser cache if necessary.
 
 HACS normally registers this resource automatically:
 
 ```text
-/hacsfiles/ha_energy-flow-card/ha_energy-flow-card.js?hacstag=…
+/hacsfiles/ha-power-energy-mix-card/ha-power-energy-mix-card.js?hacstag=…
 ```
 
 ## Configuration
 
 ```yaml
-type: custom:ha_energy-flow-card
+type: custom:ha-power-energy-mix-card
 default_mode: power
 show_card: true
 tap_action:
@@ -78,7 +78,7 @@ active period with the Energy period selector or other Energy cards, configure
 the same key on every related card:
 
 ```yaml
-type: custom:ha_energy-flow-card
+type: custom:ha-power-energy-mix-card
 collection_key: energy_1
 ```
 
@@ -104,7 +104,7 @@ Energy is selected.
 Browser Mod popup example:
 
 ```yaml
-type: custom:ha_energy-flow-card
+type: custom:ha-power-energy-mix-card
 default_mode: power
 tap_action:
   action: fire-dom-event
@@ -134,8 +134,8 @@ within the selected period.
 
 ## Manual installation
 
-Copy `ha_energy-flow-card.js` to `/config/www/ha_energy-flow-card.js`, then
-register `/local/ha_energy-flow-card.js` as a JavaScript module.
+Copy `ha-power-energy-mix-card.js` to `/config/www/ha-power-energy-mix-card.js`, then
+register `/local/ha-power-energy-mix-card.js` as a JavaScript module.
 
 ## Development
 
@@ -144,7 +144,7 @@ npm run check
 npm test
 ```
 
-Edit `ha_energy-flow-card.js` directly. The card is intentionally kept as a
+Edit `ha-power-energy-mix-card.js` directly. The card is intentionally kept as a
 single dependency-free file and requires no build step.
 
 ## Language policy

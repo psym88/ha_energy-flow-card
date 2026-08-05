@@ -59,14 +59,14 @@ const {
   getPowerComposition,
   getTodayRange,
   normalizePower,
-} = await import("../ha_energy-flow-card.js");
+} = await import("../ha-power-energy-mix-card.js");
 
-const Card = registry.get("ha_energy-flow-card");
+const Card = registry.get("ha-power-energy-mix-card");
 
 test("registers the repository-aligned card type once", () => {
   assert.equal(typeof Card, "function");
   assert.equal(
-    window.customCards.filter((card) => card.type === "ha_energy-flow-card")
+    window.customCards.filter((card) => card.type === "ha-power-energy-mix-card")
       .length,
     1
   );
@@ -200,7 +200,7 @@ test("shows the collection key only for the Energy editor mode", () => {
   );
   assert.equal(
     Card.getConfigElement().constructor,
-    registry.get("ha_energy-flow-card-editor")
+    registry.get("ha-power-energy-mix-card-editor")
   );
   assert.match(
     Card.getConfigForm().computeHelper({ name: "collection_key" }),
@@ -209,7 +209,7 @@ test("shows the collection key only for the Energy editor mode", () => {
 });
 
 test("updates the existing editor form without closing expandable sections", () => {
-  const Editor = registry.get("ha_energy-flow-card-editor");
+  const Editor = registry.get("ha-power-energy-mix-card-editor");
   const editor = new Editor();
   const form = {};
   let renderCount = 0;
